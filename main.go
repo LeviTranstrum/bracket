@@ -10,7 +10,17 @@ type Player interface {
 }
 
 type Game interface {
+	NewGame()
 	Play()
+}
+
+type GameMaker interface {
+	MakeGame(...*Player)
+}
+
+type Bracket struct {
+	Players   []Player
+	GameMaker GameMaker
 }
 
 type BaseballPlayer struct {
@@ -41,9 +51,9 @@ func (g *BaseballGame) Play() *BaseballPlayer {
 		fmt.Printf("The %s win \n", g.P1.Name)
 		return g.P1
 	}
+
 	fmt.Printf("The %s win \n", g.P2.Name)
 	return g.P2
-
 }
 
 type BaseballBracket []*BaseballPlayer
@@ -82,4 +92,7 @@ func main() {
 
 	winner := bracket.PlayBracket()
 	fmt.Printf("The %s take the bracket\n", winner.Name)
+
+	board := NewBoard()
+	board.Display()
 }
