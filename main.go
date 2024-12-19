@@ -63,6 +63,7 @@ func (b BaseballBracket) PlayBracket() *BaseballPlayer {
 	if bracketSize == 0 {
 		return nil
 	}
+
 	nextBracket := BaseballBracket{}
 	for i := 0; i < bracketSize; i += 2 {
 		if i+i < bracketSize {
@@ -81,18 +82,29 @@ func (b BaseballBracket) PlayBracket() *BaseballPlayer {
 }
 
 func main() {
-	RedSox := NewBaseballPlayer("Sox", 100, 0)
-	Yankees := NewBaseballPlayer("Yankees", 90, 20)
-	Angels := NewBaseballPlayer("Angels", 80, 40)
-	Dodgers := NewBaseballPlayer("Dodgers", 70, 60)
-	Lakers := NewBaseballPlayer("Lakers", 60, 100)
+	// RedSox := NewBaseballPlayer("Sox", 100, 0)
+	// Yankees := NewBaseballPlayer("Yankees", 90, 20)
+	// Angels := NewBaseballPlayer("Angels", 80, 40)
+	// Dodgers := NewBaseballPlayer("Dodgers", 70, 60)
+	// Lakers := NewBaseballPlayer("Lakers", 60, 100)
 
-	bracket := BaseballBracket{}
-	bracket = append(bracket, RedSox, Yankees, Angels, Dodgers, Lakers)
+	// bracket := BaseballBracket{}
+	// bracket = append(bracket, RedSox, Yankees, Angels, Dodgers, Lakers)
 
-	winner := bracket.PlayBracket()
-	fmt.Printf("The %s take the bracket\n", winner.Name)
+	// winner := bracket.PlayBracket()
+	// fmt.Printf("The %s take the bracket\n", winner.Name)
 
-	board := NewBoard()
-	board.Display()
+	px := NewTicTacToePlayer(X, NewRandomStrategy())
+	pO := NewTicTacToePlayer(O, NewRandomStrategy())
+	game := NewTicTacToeGame(px, pO)
+	winner := game.Play()
+	if winner == game.PlayerX {
+		fmt.Println("X wins!")
+	}
+	if winner == game.PlayerO {
+		fmt.Println("O wins!")
+	}
+	if winner == nil {
+		fmt.Println("Cat's game!")
+	}
 }
