@@ -94,7 +94,7 @@ func main() {
 	// winner := bracket.PlayBracket()
 	// fmt.Printf("The %s take the bracket\n", winner.Name)
 
-	px := NewTicTacToePlayer(X, NewRandomStrategy())
+	px := NewTicTacToePlayer(X, NewInformedStrategy())
 	pO := NewTicTacToePlayer(O, NewRandomStrategy())
 	game := NewTicTacToeGame(px, pO)
 	winner := game.Play()

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 )
 
@@ -27,11 +28,11 @@ func SquareToString(s Square) string {
 
 type Board [][]Square
 
-func NewBoard(rows, cols uint) *Board {
+func NewBoard(rows, cols int) *Board {
 	board := Board{}
-	for i := uint(0); i < rows; i++ {
+	for i := 0; i < rows; i++ {
 		row := []Square{}
-		for j := uint(0); j < cols; j++ {
+		for j := 0; j < cols; j++ {
 			row = append(row, BLANK)
 		}
 		board = append(board, row)
@@ -41,47 +42,46 @@ func NewBoard(rows, cols uint) *Board {
 }
 
 // TODO: This assumes 3x3 board
-func (b *Board) Display() {
+func (b *Board) ToString() string {
 	if b == nil {
-		fmt.Println("BOARD IS NIL")
-		return
+		return "BOARD IS NIL"
 	}
 
-	fmt.Println("_____________")
+	s := "_____________\n"
 	for i, row := range *b {
 		if i != 0 {
-			fmt.Println("+———+———+———+")
+			s += "+———+———+———+\n"
 		}
-		fmt.Print("|")
+		s += "|"
 		for _, square := range row {
-			fmt.Printf(" %s |", SquareToString(square))
+			s += fmt.Sprintf(" %s |", SquareToString(square))
 		}
-		fmt.Print("\n")
+		s += "\n"
 	}
-	fmt.Println("‾‾‾‾‾‾‾‾‾‾‾‾‾")
+	s += "‾‾‾‾‾‾‾‾‾‾‾‾\n"
+	return s
 }
 
 func (b *Board) IsLegal(m Move) error {
 	if m.Mark != X && m.Mark != O {
-		return errors.New("Mark must be either X or O")
+		return errors.New("mark must be either X or O")
 	}
 
 	if int(m.Row) > len(*b) || int(m.Col) > len((*b)[m.Row]) {
-		return errors.New(fmt.Sprintf(
-			"Row %d Column %d is out of bounds for board with dimensions %dx%d", len(*b), len((*b)[0]),
-		))
+		return fmt.Errorf(
+			"row %d Column %d is out of bounds for board with dimensions %dx%d", len(*b), len((*b)[0]), m.Row, m.Col,
+		)
 	}
 
 	if (*b)[m.Row][m.Col] != BLANK {
-		return errors.New(fmt.Sprintf(
-			"Row %d Column %d already has a %s", m.Row, m.Col, SquareToString((*b)[m.Row][m.Col]),
-		))
+		return fmt.Errorf(
+			"row %d Column %d already has a %s", m.Row, m.Col, SquareToString((*b)[m.Row][m.Col]),
+		)
 	}
 
 	return nil
 }
 
-// TODO: Pull some of this out into b.IsLegal(move)
 func (b *Board) Play(move Move) error {
 	if b == nil {
 		return errors.New("Board is nil")
@@ -96,30 +96,23 @@ func (b *Board) Play(move Move) error {
 }
 
 // Assumes 3x3 board
-func (b Board) CheckWinner() *Square {
+func (b *Board) CheckWinner() Square {
 	if b == nil {
-		return nil
+		return BLANK
 	}
 
 	sums := b.computeSums()
 	for _, sum := range sums {
 		if sum == 3 {
-			x := X
-			return &x
+			return X
 		}
 
 		if sum == -3 {
-			o := O
-			return &o
+			return O
 		}
 	}
 
-	if b.isFull() {
-		blank := BLANK
-		return &blank
-	}
-
-	return nil
+	return BLANK
 }
 
 func (b Board) computeSums() []int {
@@ -148,9 +141,20 @@ func (b Board) isFull() bool {
 	return true
 }
 
+func (b *Board) clone() *Board {
+	clone := NewBoard(len(*b), len((*b)[0]))
+	for rowNum, row := range *b {
+		for colNum := range row {
+			(*clone)[rowNum][colNum] = (*b)[rowNum][colNum]
+		}
+	}
+
+	return clone
+}
+
 type Move struct {
-	Row  uint
-	Col  uint
+	Row  int
+	Col  int
 	Mark Square
 }
 
@@ -159,11 +163,52 @@ type Strategy func(b *Board, objective Square) Move
 func NewRandomStrategy() Strategy {
 	return func(b *Board, objective Square) Move {
 		for {
-			move := Move{uint(rand.Intn(len(*b))), uint(rand.Intn(len((*b)[0]))), objective}
+			move := Move{rand.Intn(len(*b)), rand.Intn(len((*b)[0])), objective}
 			if err := b.IsLegal(move); err == nil {
 				return move
 			}
 		}
+	}
+}
+
+func NewInformedStrategy() Strategy {
+	return func(b *Board, objective Square) Move {
+		candidateMoves := []Move{}
+
+		// Find all legal moves
+		for rowNum, row := range *b {
+			for col := range row {
+				if row[col] == BLANK {
+					candidateMoves = append(candidateMoves, Move{rowNum, col, objective})
+				}
+			}
+		}
+
+		var bestMove Move
+		bestStrength := -math.MaxInt
+
+		// Check all moves and find the one which wins or maximizes the row, column, and diagonal scores
+		for _, move := range candidateMoves {
+			boardCopy := b.clone()
+			boardCopy.Play(move)
+			if boardCopy.CheckWinner() == objective {
+				return move
+			}
+
+			sums := boardCopy.computeSums()
+			strength := 0
+			for _, sum := range sums {
+				// multiply by 1 if X, -1 if O
+				strength += sum * int(objective)
+			}
+
+			if strength > bestStrength {
+				bestMove = move
+				bestStrength = strength
+			}
+		}
+
+		return bestMove
 	}
 }
 
@@ -204,10 +249,16 @@ func (g *TicTacToeGame) Play() *TicTacToePlayer {
 		}
 
 		fmt.Println("X's move:")
-		g.Board.Display()
+		fmt.Print(g.Board.ToString())
 
-		if winner := g.Board.CheckWinner(); winner != nil && *winner == X {
+		winner := g.Board.CheckWinner()
+
+		if winner == X {
 			return g.PlayerX
+		}
+
+		if g.Board.isFull() && winner == BLANK {
+			return nil
 		}
 
 		moveO := g.PlayerO.ChooseMove(g.Board)
@@ -218,15 +269,15 @@ func (g *TicTacToeGame) Play() *TicTacToePlayer {
 		}
 
 		fmt.Println("O's move:")
-		g.Board.Display()
+		fmt.Print(g.Board.ToString())
 
-		winner := g.Board.CheckWinner()
+		winner = g.Board.CheckWinner()
 
-		if winner != nil && *winner == O {
+		if winner == O {
 			return g.PlayerO
 		}
 
-		if winner != nil && *winner == BLANK {
+		if g.Board.isFull() && winner == BLANK {
 			return nil
 		}
 	}
