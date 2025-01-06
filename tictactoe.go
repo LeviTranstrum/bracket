@@ -152,6 +152,21 @@ func (b *Board) clone() *Board {
 	return clone
 }
 
+func (b *Board) listLegalMoves(objective Square) []Move {
+	moves := []Move{}
+
+	// Find all legal moves
+	for rowNum, row := range *b {
+		for col := range row {
+			if row[col] == BLANK {
+				moves = append(moves, Move{rowNum, col, objective})
+			}
+		}
+	}
+
+	return moves
+}
+
 type Move struct {
 	Row  int
 	Col  int
@@ -173,16 +188,7 @@ func NewRandomStrategy() Strategy {
 
 func NewInformedStrategy() Strategy {
 	return func(b *Board, objective Square) Move {
-		candidateMoves := []Move{}
-
-		// Find all legal moves
-		for rowNum, row := range *b {
-			for col := range row {
-				if row[col] == BLANK {
-					candidateMoves = append(candidateMoves, Move{rowNum, col, objective})
-				}
-			}
-		}
+		candidateMoves := b.listLegalMoves(objective)
 
 		var bestMove Move
 		bestStrength := -math.MaxInt
@@ -209,6 +215,82 @@ func NewInformedStrategy() Strategy {
 		}
 
 		return bestMove
+	}
+}
+
+func NewSmartStrategy() Strategy {
+	return func(b *Board, objective Square) Move {
+		candidateMoves := b.listLegalMoves(objective)
+
+		var bestMove *Move = nil
+		myBestScore := -math.MaxInt
+		opponentBestScore := -math.MaxInt
+
+		for _, move := range candidateMoves {
+			boardCopy := b.clone()
+			boardCopy.Play(move)
+			if boardCopy.CheckWinner() == objective {
+				return move
+			}
+
+			myBestSum := -math.MaxInt
+			opponentBestSum := math.MaxInt
+
+			sums := boardCopy.computeSums()
+			for _, sum := range sums {
+				// weightedSum is the row, column, or diagonal sum multiplied by 1 for X or -1 for O
+				weightedSum := sum * int(objective)
+				if weightedSum > myBestSum {
+					myBestSum = weightedSum
+				}
+
+				if weightedSum < opponentBestSum {
+					opponentBestSum = weightedSum
+				}
+			}
+
+			if myBestSum == 3 {
+				return move
+			}
+
+			if opponentBestSum >= opponentBestScore {
+				bestMove = &move
+				opponentBestScore = opponentBestSum
+			}
+
+			if myBestSum >= myBestScore && opponentBestSum >= opponentBestScore {
+				bestMove = &move
+				myBestScore = myBestSum
+				opponentBestScore = opponentBestSum
+			}
+
+		}
+
+		centerMove := Move{1, 1, objective}
+		if b.IsLegal(centerMove) == nil {
+			boardCopy := b.clone()
+			boardCopy.Play(centerMove)
+			myBestSum := -math.MaxInt
+			opponentBestSum := math.MaxInt
+			sums := boardCopy.computeSums()
+			for _, sum := range sums {
+				// weightedSum is the row, column, or diagonal sum multiplied by 1 for X or -1 for O
+				weightedSum := sum * int(objective)
+				if weightedSum > myBestSum {
+					myBestSum = weightedSum
+				}
+
+				if weightedSum < opponentBestSum {
+					opponentBestSum = weightedSum
+				}
+			}
+
+			if myBestSum >= myBestScore && opponentBestSum >= opponentBestScore {
+				bestMove = &centerMove
+			}
+		}
+
+		return *bestMove
 	}
 }
 

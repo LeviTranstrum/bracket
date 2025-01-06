@@ -93,18 +93,28 @@ func main() {
 
 	// winner := bracket.PlayBracket()
 	// fmt.Printf("The %s take the bracket\n", winner.Name)
-
-	px := NewTicTacToePlayer(X, NewInformedStrategy())
-	pO := NewTicTacToePlayer(O, NewRandomStrategy())
-	game := NewTicTacToeGame(px, pO)
-	winner := game.Play()
-	if winner == game.PlayerX {
-		fmt.Println("X wins!")
+	xWins := 0
+	oWins := 0
+	draws := 0
+	for range 10000 {
+		px := NewTicTacToePlayer(X, NewSmartStrategy())
+		pO := NewTicTacToePlayer(O, NewRandomStrategy())
+		game := NewTicTacToeGame(px, pO)
+		winner := game.Play()
+		if winner == game.PlayerX {
+			fmt.Println("X wins!")
+			xWins++
+		}
+		if winner == game.PlayerO {
+			fmt.Println("O wins!")
+			oWins++
+		}
+		if winner == nil {
+			fmt.Println("Cat's game!")
+			draws++
+		}
 	}
-	if winner == game.PlayerO {
-		fmt.Println("O wins!")
-	}
-	if winner == nil {
-		fmt.Println("Cat's game!")
-	}
+	fmt.Printf("xWins: %d", xWins)
+	fmt.Printf("oWins: %d", oWins)
+	fmt.Printf("draws: %d", draws)
 }
